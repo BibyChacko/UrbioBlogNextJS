@@ -122,7 +122,7 @@ export default function BlogPage() {
                   xs={12} 
                   sm={6} 
                   md={4} 
-                  key={post.id}
+                  key={`${post.id}-${page}-${index}`}
                   ref={index === posts.length - pageSize ? lastPostRef : undefined}
                 >
                   <BlogCard post={post} />
