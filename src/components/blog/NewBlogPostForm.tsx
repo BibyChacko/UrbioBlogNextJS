@@ -82,7 +82,10 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
       maxWidth="md" 
       fullWidth
       PaperProps={{
-        sx: { overflowY: 'visible' }
+        sx: { 
+          height: '90vh',
+          overflowY: 'auto'
+        }
       }}
     >
       <DialogTitle>Create New Blog Post</DialogTitle>

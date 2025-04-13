@@ -51,11 +51,15 @@ export default async function BlogPage({
   searchParams: { [key: string]: string | string[] | undefined } 
 }) {
   const params = new URLSearchParams();
-  Object.entries(searchParams).forEach(([key, value]) => {
-    if (typeof value === 'string') {
-      params.set(key, value);
-    }
-  });
+  
+  // Wait for searchParams to be ready
+  const resolvedParams = await Promise.resolve(searchParams);
+  
+  params.set('page', (resolvedParams.page as string) || '1');
+  params.set('pageSize', (resolvedParams.pageSize as string) || '10');
+  if (resolvedParams.search) params.set('search', resolvedParams.search as string);
+  if (resolvedParams.tag) params.set('tag', resolvedParams.tag as string);
+  if (resolvedParams.author) params.set('author', resolvedParams.author as string);
 
   const initialData = await getInitialPosts(params);
 

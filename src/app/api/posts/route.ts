@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     // Set cache headers
     const headers = new Headers();
     headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-    
+    console.log(result);
     return NextResponse.json(result, {
       headers,
       status: 200,
