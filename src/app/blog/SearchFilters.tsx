@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -30,10 +30,16 @@ interface SearchFiltersProps {
 export default function SearchFilters({ availableTags, availableAuthors }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchValue, setSearchValue] = useState(() => searchParams.get('search') || '');
+  const [mounted, setMounted] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout>();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchorEl);
+
+  useEffect(() => {
+    setMounted(true);
+    setSearchValue(searchParams.get('search') || '');
+  }, [searchParams]);
 
   const handleFilterClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -103,24 +109,25 @@ export default function SearchFilters({ availableTags, availableAuthors }: Searc
   return (
     <Stack spacing={2}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <TextField
-          size="small"
-          placeholder="Search posts..."
-          value={searchValue}
-          onChange={(e) => {
-            setSearchValue(e.target.value);
-            handleSearch(e.target.value);
-          }}
-          sx={{ width: '300px' }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon color="action" />
-              </InputAdornment>
-            ),
-          }}
-        />
-
+        {mounted && (
+          <TextField
+            size="small"
+            placeholder="Search posts..."
+            value={searchValue}
+            onChange={(e) => {
+              setSearchValue(e.target.value);
+              handleSearch(e.target.value);
+            }}
+            sx={{ width: '300px' }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+        )}
         <IconButton
           onClick={handleFilterClick}
           color={hasActiveFilters ? "primary" : "default"}

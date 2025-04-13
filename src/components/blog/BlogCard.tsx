@@ -38,10 +38,10 @@ export default function BlogCard({ post }: BlogCardProps) {
         </CardActionArea>
       )}
       <CardContent sx={{ flexGrow: 1 }}>
-        <Typography gutterBottom variant="h5" component="h2" color="text.secondary">
+        <Typography gutterBottom variant="h5" component="h2" color="secondary">
           {post.title}
         </Typography>
-        <Typography variant="body2" color="text.secondary" paragraph>
+        <Typography variant="body2"  paragraph>
           {truncateContent(post.content)}
         </Typography>
         <Box sx={{ mt: 2 }}>
