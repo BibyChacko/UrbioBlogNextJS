@@ -1,45 +1,43 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  TextField,
-  Autocomplete,
-  IconButton,
-  Popover,
-  Paper,
-  Typography,
-  InputAdornment,
-  Stack,
-  Button,
-  Chip,
-  Collapse,
-  Fade,
-} from '@mui/material';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Box, TextField, IconButton, InputAdornment, Button, Popover, Stack, Chip } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import CloseIcon from '@mui/icons-material/Close';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
+import ClearIcon from '@mui/icons-material/Clear';
+import AddIcon from '@mui/icons-material/Add';
+import { useSearchParams, useRouter } from 'next/navigation';
+import NewBlogPostForm from '@/components/blog/NewBlogPostForm';
 
 interface SearchFiltersProps {
   availableTags: string[];
   availableAuthors: string[];
+  onSearch: (params: { search?: string; tag?: string; author?: string }) => void;
 }
 
-export default function SearchFilters({ availableTags, availableAuthors }: SearchFiltersProps) {
-  const router = useRouter();
+export default function SearchFilters({ availableTags, availableAuthors, onSearch }: SearchFiltersProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
-  const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout>();
+  const [searchTerm, setSearchTerm] = useState('');
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [isNewPostOpen, setIsNewPostOpen] = useState(false);
   const open = Boolean(anchorEl);
 
+  // Initialize state after mount to avoid hydration mismatch
   useEffect(() => {
+    setSearchTerm(searchParams.get('search') || '');
     setMounted(true);
-    setSearchValue(searchParams.get('search') || '');
   }, [searchParams]);
+
+  const currentTag = searchParams.get('tag') || '';
+  const currentAuthor = searchParams.get('author') || '';
+  const hasFilters = !!(searchTerm || currentTag || currentAuthor);
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onSearch({ search: searchTerm || undefined });
+  };
 
   const handleFilterClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -49,149 +47,130 @@ export default function SearchFilters({ availableTags, availableAuthors }: Searc
     setAnchorEl(null);
   };
 
-  const handleSearch = (value: string) => {
-    clearTimeout(searchDebounce);
-    setSearchDebounce(setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (value) {
-        params.set('search', value);
-      } else {
-        params.delete('search');
-      }
-      params.set('page', '1');
-      router.push(`/blog?${params.toString()}`);
-    }, 300));
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    onSearch({ search: undefined });
   };
 
-  const handleTagChange = (_: any, value: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set('tag', value);
-    } else {
-      params.delete('tag');
-    }
-    params.set('page', '1');
-    router.push(`/blog?${params.toString()}`);
-    handleClose();
+  const handleClearTag = () => {
+    onSearch({ tag: undefined });
   };
 
-  const handleAuthorChange = (_: any, value: string | null) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (value) {
-      params.set('author', value);
-    } else {
-      params.delete('author');
-    }
-    params.set('page', '1');
-    router.push(`/blog?${params.toString()}`);
-    handleClose();
-  };
-
-  const handleClearFilter = (type: 'search' | 'tag' | 'author') => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete(type);
-    params.set('page', '1');
-    router.push(`/blog?${params.toString()}`);
+  const handleClearAuthor = () => {
+    onSearch({ author: undefined });
   };
 
   const handleClearAll = () => {
-    router.push('/blog');
+    setSearchTerm('');
+    onSearch({ search: undefined, tag: undefined, author: undefined });
   };
 
-  const activeFilters = {
-    search: searchValue,
-    tag: searchParams.get('tag') || '',
-    author: searchParams.get('author') || '',
-  };
-
-  const hasActiveFilters = Object.values(activeFilters).some(Boolean);
+  // Don't render until after hydration to avoid mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
-    <Stack spacing={2}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        {mounted && (
-          <TextField
-            size="small"
-            placeholder="Search posts..."
-            value={searchValue}
-            onChange={(e) => {
-              setSearchValue(e.target.value);
-              handleSearch(e.target.value);
+    <Box sx={{ mb: 4 }}>
+      <Box sx={{ 
+        display: 'flex', 
+        gap: 2, 
+        mb: hasFilters ? 2 : 0,
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Box
+            component="form"
+            onSubmit={handleSearch}
+            sx={{
+              display: 'flex',
+              gap: 2,
+              alignItems: 'center',
             }}
-            sx={{ width: '300px' }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon color="action" />
-                </InputAdornment>
-              ),
-            }}
-          />
-        )}
-        <IconButton
-          onClick={handleFilterClick}
-          color={hasActiveFilters ? "primary" : "default"}
-          sx={{ position: 'relative' }}
-        >
-          <FilterListIcon />
-          {hasActiveFilters && (
-            <Chip
-              label={Object.values(activeFilters).filter(Boolean).length}
-              color="primary"
-              size="small"
-              sx={{
-                position: 'absolute',
-                top: -8,
-                right: -8,
-                height: '20px',
-                minWidth: '20px',
-              }}
-            />
-          )}
-        </IconButton>
-
-        <Fade in={hasActiveFilters}>
-          <Button
-            startIcon={<ClearAllIcon />}
-            size="small"
-            onClick={handleClearAll}
           >
-            Clear All
-          </Button>
-        </Fade>
-      </Box>
+            <TextField
+              placeholder="Search posts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              sx={{ width: '300px' }}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton type="submit" size="small">
+                      <SearchIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+            />
+          </Box>
 
-      <Collapse in={hasActiveFilters}>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          {activeFilters.search && (
-            <Chip
-              label={`Search: ${activeFilters.search}`}
-              onDelete={() => handleClearFilter('search')}
+          <Button
+            variant="outlined"
+            startIcon={<FilterListIcon />}
+            onClick={handleFilterClick}
+            size="small"
+            color={hasFilters ? "primary" : "inherit"}
+          >
+            Filters {hasFilters && `(${[currentTag, currentAuthor].filter(Boolean).length})`}
+          </Button>
+
+          {hasFilters && (
+            <Button
+              variant="text"
+              startIcon={<ClearIcon />}
+              onClick={handleClearAll}
               size="small"
-              color="primary"
-              variant="outlined"
-            />
-          )}
-          {activeFilters.tag && (
-            <Chip
-              label={`Tag: ${activeFilters.tag}`}
-              onDelete={() => handleClearFilter('tag')}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          )}
-          {activeFilters.author && (
-            <Chip
-              label={`Author: ${activeFilters.author}`}
-              onDelete={() => handleClearFilter('author')}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
+              color="inherit"
+            >
+              Clear All
+            </Button>
           )}
         </Box>
-      </Collapse>
+
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setIsNewPostOpen(true)}
+          size="small"
+        >
+          New Post
+        </Button>
+      </Box>
+
+      {hasFilters && (
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+          {searchTerm && (
+            <Chip
+              label={`Search: ${searchTerm}`}
+              onDelete={handleClearSearch}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          )}
+          {currentTag && (
+            <Chip
+              label={`Tag: ${currentTag}`}
+              onDelete={handleClearTag}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          )}
+          {currentAuthor && (
+            <Chip
+              label={`Author: ${currentAuthor}`}
+              onDelete={handleClearAuthor}
+              size="small"
+              color="primary"
+              variant="outlined"
+            />
+          )}
+        </Stack>
+      )}
 
       <Popover
         open={open}
@@ -205,46 +184,55 @@ export default function SearchFilters({ availableTags, availableAuthors }: Searc
           vertical: 'top',
           horizontal: 'right',
         }}
-        PaperProps={{
-          elevation: 3,
-          sx: { 
-            p: 3,
-            width: 320,
-            transform: 'scale(1)',
-            transition: 'transform 0.2s ease-in-out',
-            '&:hover': {
-              transform: 'scale(1.01)',
-            },
-          },
-        }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Typography variant="h6">Filters</Typography>
-          <IconButton size="small" onClick={handleClose}>
-            <CloseIcon />
-          </IconButton>
-        </Box>
+        <Stack spacing={2} sx={{ p: 2, minWidth: 300 }}>
+          <TextField
+            select
+            fullWidth
+            placeholder="Filter by Tag"
+            value={currentTag}
+            onChange={(e) => {
+              onSearch({ tag: e.target.value || undefined });
+              handleClose();
+            }}
+            SelectProps={{
+              native: true
+            }}
+            size="small"
+          >
+            <option value="">Filter by Tag</option>
+            {availableTags.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </TextField>
 
-        <Stack spacing={2}>
-          <Autocomplete
-            options={availableTags}
-            renderInput={(params) => (
-              <TextField {...params} label="Filter by tag" size="small" />
-            )}
-            value={activeFilters.tag}
-            onChange={handleTagChange}
-          />
-
-          <Autocomplete
-            options={availableAuthors}
-            renderInput={(params) => (
-              <TextField {...params} label="Filter by author" size="small" />
-            )}
-            value={activeFilters.author}
-            onChange={handleAuthorChange}
-          />
+          <TextField
+            select
+            fullWidth
+            placeholder="Filter by Author"
+            value={currentAuthor}
+            onChange={(e) => {
+              onSearch({ author: e.target.value || undefined });
+              handleClose();
+            }}
+            SelectProps={{
+              native: true
+            }}
+            size="small"
+          >
+            <option value="">Filter by Author</option>
+            {availableAuthors.map((author) => (
+              <option key={author} value={author}>
+                {author}
+              </option>
+            ))}
+          </TextField>
         </Stack>
       </Popover>
-    </Stack>
+
+      <NewBlogPostForm open={isNewPostOpen} onClose={() => setIsNewPostOpen(false)} />
+    </Box>
   );
 }
