@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { filterPosts } from '@/lib/db/posts';
+import { posts } from '@/lib/db/posts';
+import { BlogPost } from '@/types/blog';
 
 // Enable edge runtime for better performance
 export const runtime = 'edge';
@@ -19,7 +21,6 @@ export async function GET(request: NextRequest) {
   const author = searchParams.get('author') || undefined;
   
   try {
-
     await new Promise(resolve => setTimeout(resolve, DELAY));
     const result = filterPosts({ search, tag, author, page, pageSize });
     
@@ -34,6 +35,43 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: 'Failed to fetch posts' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Validate required fields
+    if (!body.title || !body.content || !body.author) {
+      return NextResponse.json(
+        { error: 'Title, content and author are required' },
+        { status: 400 }
+      );
+    }
+
+    // Create new post
+    const newPost: BlogPost = {
+      id: (posts.length + 1).toString(),
+      title: body.title,
+      content: body.content,
+      author: body.author,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      imageUrl: body.imageUrl || 'https://dummyimage.com/640x480/',
+      tags: body.tags || [],
+    };
+
+    // Add to posts array
+    posts.unshift(newPost);
+
+    await new Promise(resolve => setTimeout(resolve, DELAY));
+    return NextResponse.json(newPost);
+  } catch (error) {
+    return NextResponse.json(
+      { error: 'Failed to create post' },
       { status: 500 }
     );
   }

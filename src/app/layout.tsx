@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
+import 'react-quill/dist/quill.snow.css';
 import ThemeRegistry from '@/components/providers/ThemeRegistry';
 import { StoreProvider } from '@/components/providers/StoreProvider';
 
