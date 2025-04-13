@@ -28,7 +28,7 @@ export default function BlogCard({ post }: BlogCardProps) {
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {post.imageUrl && (
-        <CardActionArea component={Link} href={`/blog/${post.id}`}>
+        <CardActionArea component={Link} href={`/${post.id}`}>
           <CardMedia
             component="img"
             height="240"
@@ -62,7 +62,7 @@ export default function BlogCard({ post }: BlogCardProps) {
             </Box>
             <Button
               component={Link}
-              href={`/blog/${post.id}`}
+              href={`/${post.id}`}
               color="primary"
               sx={{
                 '& .MuiSvgIcon-root': {
