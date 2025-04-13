@@ -10,7 +10,8 @@ export async function GET(
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  const post = posts.find((p) => p.id === params.id);
+  const id = await Promise.resolve(params.id);
+  const post = posts.find((p) => p.id === id);
 
   if (!post) {
     return NextResponse.json(

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   Box,
   TextField,
@@ -30,14 +30,10 @@ interface SearchFiltersProps {
 export default function SearchFilters({ availableTags, availableAuthors }: SearchFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState(() => searchParams.get('search') || '');
   const [searchDebounce, setSearchDebounce] = useState<NodeJS.Timeout>();
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const open = Boolean(anchorEl);
-
-  useEffect(() => {
-    setSearchValue(searchParams.get('search') || '');
-  }, [searchParams]);
 
   const handleFilterClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -97,9 +93,9 @@ export default function SearchFilters({ availableTags, availableAuthors }: Searc
   };
 
   const activeFilters = {
-    search: searchParams.get('search'),
-    tag: searchParams.get('tag'),
-    author: searchParams.get('author'),
+    search: searchValue,
+    tag: searchParams.get('tag') || '',
+    author: searchParams.get('author') || '',
   };
 
   const hasActiveFilters = Object.values(activeFilters).some(Boolean);
