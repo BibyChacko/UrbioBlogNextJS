@@ -119,7 +119,7 @@ export default function SearchFilters({ availableTags, availableAuthors, onSearc
 
           {hasFilters && (
             <Button
-              variant="text"
+              variant="outlined"
               startIcon={<ClearIcon />}
               onClick={handleClearAll}
               size="small"
