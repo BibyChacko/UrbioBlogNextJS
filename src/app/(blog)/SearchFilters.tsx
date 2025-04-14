@@ -1,7 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, TextField, IconButton, InputAdornment, Button, Popover, Stack, Chip } from '@mui/material';
+import { 
+  Box, 
+  Button, 
+  Stack, 
+  TextField, 
+  Popover, 
+  IconButton,
+  useTheme,
+  useMediaQuery, 
+  Chip
+} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -15,55 +25,59 @@ interface SearchFiltersProps {
   onSearch: (params: { search?: string; tag?: string; author?: string }) => void;
 }
 
-export default function SearchFilters({ availableTags, availableAuthors, onSearch }: SearchFiltersProps) {
+export default function SearchFilters({ 
+  onSearch, 
+  availableTags, 
+  availableAuthors 
+}: SearchFiltersProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [isNewPostOpen, setIsNewPostOpen] = useState(false);
-  const open = Boolean(anchorEl);
+  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
-  // Initialize state after mount to avoid hydration mismatch
-  useEffect(() => {
-    setSearchTerm(searchParams.get('search') || '');
-    setMounted(true);
-  }, [searchParams]);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const currentTag = searchParams.get('tag') || '';
   const currentAuthor = searchParams.get('author') || '';
-  const hasFilters = !!(searchTerm || currentTag || currentAuthor);
+  const hasFilters = Boolean(searchTerm || currentTag || currentAuthor);
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    onSearch({ search: searchTerm || undefined });
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setSearchTerm(value);
+    onSearch({ search: value || undefined });
   };
 
   const handleFilterClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
   };
 
-  const handleClose = () => {
+  const handleFilterClose = () => {
     setAnchorEl(null);
-  };
-
-  const handleClearSearch = () => {
-    setSearchTerm('');
-    onSearch({ search: undefined });
-  };
-
-  const handleClearTag = () => {
-    onSearch({ tag: undefined });
-  };
-
-  const handleClearAuthor = () => {
-    onSearch({ author: undefined });
   };
 
   const handleClearAll = () => {
     setSearchTerm('');
     onSearch({ search: undefined, tag: undefined, author: undefined });
+    handleFilterClose();
   };
+
+  const handleTagChange = (value: string) => {
+    onSearch({ tag: value || undefined });
+    handleFilterClose();
+  };
+
+  const handleAuthorChange = (value: string) => {
+    onSearch({ author: value || undefined });
+    handleFilterClose();
+  };
+
+  // Initialize state after mount to avoid hydration mismatch
+  useEffect(() => {
+    setSearchTerm(searchParams.get('search') || '');
+    setMounted(true);
+  }, [searchParams]);
 
   // Don't render until after hydration to avoid mismatch
   if (!mounted) {
@@ -72,133 +86,187 @@ export default function SearchFilters({ availableTags, availableAuthors, onSearc
 
   return (
     <Box sx={{ mb: 4 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 2, 
-        mb: hasFilters ? 2 : 0,
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          <Box
-            component="form"
-            onSubmit={handleSearch}
-            sx={{
-              display: 'flex',
-              gap: 2,
-              alignItems: 'center',
-            }}
-          >
-            <TextField
-              placeholder="Search posts..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              sx={{ width: '300px' }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton type="submit" size="small">
-                      <SearchIcon />
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-              size="small"
-            />
-          </Box>
-
-          <Button
-            variant="outlined"
-            startIcon={<FilterListIcon />}
-            onClick={handleFilterClick}
+      <Stack 
+        spacing={2} 
+        sx={{ 
+          mb: hasFilters ? 2 : 0 
+        }}
+      >
+        {/* Search and Action Buttons */}
+        <Stack 
+          direction="row" 
+          spacing={2} 
+          alignItems="center"
+          sx={{
+            flexWrap: { xs: 'nowrap', sm: 'wrap' },
+            gap: 1
+          }}
+        >
+          {/* Search Field - Always visible but styled differently for mobile */}
+          <TextField
+            value={searchTerm}
+            onChange={handleSearchChange}
+            placeholder="Search posts..."
             size="small"
-            color={hasFilters ? "primary" : "inherit"}
-          >
-            Filters {hasFilters && `(${[currentTag, currentAuthor].filter(Boolean).length})`}
-          </Button>
+            sx={{ 
+              flexGrow: 1,
+              minWidth: { xs: '120px', sm: '200px' }
+            }}
+            InputProps={{
+              startAdornment: isMobile ? <SearchIcon sx={{ mr: 1 }} /> : null
+            }}
+          />
 
-          {hasFilters && (
-            <Button
-              variant="outlined"
-              startIcon={<ClearIcon />}
-              onClick={handleClearAll}
+          {/* Filter Button/Icon */}
+          {isMobile ? (
+            <IconButton 
+              onClick={handleFilterClick}
               size="small"
-              color="inherit"
+              sx={{ flexShrink: 0 }}
+              color={hasFilters ? "primary" : "default"}
             >
-              Clear All
+              <FilterListIcon />
+            </IconButton>
+          ) : (
+            <Button
+              onClick={handleFilterClick}
+              variant="outlined"
+              startIcon={<FilterListIcon />}
+              size="small"
+              color={hasFilters ? "primary" : "inherit"}
+            >
+              Filters
             </Button>
           )}
-        </Box>
 
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setIsNewPostOpen(true)}
-          size="small"
-        >
-          New Post
-        </Button>
-      </Box>
+          {/* New Post Button/Icon */}
+          {isMobile ? (
+            <IconButton 
+              onClick={() => setIsNewPostOpen(true)}
+              size="small"
+              color="primary"
+              sx={{ flexShrink: 0 }}
+            >
+              <AddIcon />
+            </IconButton>
+          ) : (
+            <Button
+              onClick={() => setIsNewPostOpen(true)}
+              variant="contained"
+              startIcon={<AddIcon />}
+              size="small"
+            >
+              New Post
+            </Button>
+          )}
 
-      {hasFilters && (
-        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-          {searchTerm && (
-            <Chip
-              label={`Search: ${searchTerm}`}
-              onDelete={handleClearSearch}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          )}
-          {currentTag && (
-            <Chip
-              label={`Tag: ${currentTag}`}
-              onDelete={handleClearTag}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
-          )}
-          {currentAuthor && (
-            <Chip
-              label={`Author: ${currentAuthor}`}
-              onDelete={handleClearAuthor}
-              size="small"
-              color="primary"
-              variant="outlined"
-            />
+          {/* Clear Filters Button - Show as icon on mobile */}
+          {hasFilters && (
+            isMobile ? (
+              <IconButton
+                size="small"
+                onClick={handleClearAll}
+                color="default"
+                sx={{ flexShrink: 0 }}
+              >
+                <ClearIcon />
+              </IconButton>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<ClearIcon />}
+                onClick={handleClearAll}
+                size="small"
+                color="inherit"
+              >
+                Clear All
+              </Button>
+            )
           )}
         </Stack>
-      )}
 
+        {/* Active Filters - Show in a scrollable row on mobile */}
+        {hasFilters && (
+          <Stack 
+            direction="row" 
+            spacing={1} 
+            sx={{ 
+              mt: 1,
+              overflowX: 'auto',
+              pb: 1, // Add padding to show scrollbar
+              '::-webkit-scrollbar': {
+                height: '4px',
+              },
+              '::-webkit-scrollbar-track': {
+                background: theme.palette.grey[100],
+                borderRadius: '2px',
+              },
+              '::-webkit-scrollbar-thumb': {
+                background: theme.palette.grey[400],
+                borderRadius: '2px',
+              },
+            }}
+          >
+            {searchTerm && (
+              <Chip
+                size="small"
+                label={`Search: ${searchTerm}`}
+                onDelete={() => {
+                  setSearchTerm('');
+                  onSearch({ search: undefined });
+                }}
+              />
+            )}
+            {currentTag && (
+              <Chip
+                size="small"
+                label={`Tag: ${currentTag}`}
+                onDelete={() => onSearch({ tag: undefined })}
+              />
+            )}
+            {currentAuthor && (
+              <Chip
+                size="small"
+                label={`Author: ${currentAuthor}`}
+                onDelete={() => onSearch({ author: undefined })}
+              />
+            )}
+          </Stack>
+        )}
+      </Stack>
+
+      {/* Filter Popover - Same for both mobile and desktop */}
       <Popover
-        open={open}
+        open={Boolean(anchorEl)}
         anchorEl={anchorEl}
-        onClose={handleClose}
+        onClose={handleFilterClose}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'right',
+          horizontal: 'left',
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'right',
+          horizontal: 'left',
+        }}
+        sx={{
+          '& .MuiPopover-paper': {
+            width: { xs: '280px', sm: '320px' },
+            p: 2,
+            mt: 1
+          }
         }}
       >
-        <Stack spacing={2} sx={{ p: 2, minWidth: 300 }}>
+        <Stack spacing={2}>
           <TextField
             select
-            fullWidth
-            placeholder="Filter by Tag"
+            label="Filter by Tag"
             value={currentTag}
-            onChange={(e) => {
-              onSearch({ tag: e.target.value || undefined });
-              handleClose();
-            }}
+            onChange={(e) => handleTagChange(e.target.value)}
             SelectProps={{
               native: true
             }}
             size="small"
+            fullWidth
           >
             <option value="">Filter by Tag</option>
             {availableTags.map((tag) => (
@@ -210,17 +278,14 @@ export default function SearchFilters({ availableTags, availableAuthors, onSearc
 
           <TextField
             select
-            fullWidth
-            placeholder="Filter by Author"
+            label="Filter by Author"
             value={currentAuthor}
-            onChange={(e) => {
-              onSearch({ author: e.target.value || undefined });
-              handleClose();
-            }}
+            onChange={(e) => handleAuthorChange(e.target.value)}
             SelectProps={{
               native: true
             }}
             size="small"
+            fullWidth
           >
             <option value="">Filter by Author</option>
             {availableAuthors.map((author) => (
