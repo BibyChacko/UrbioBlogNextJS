@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Grid, Alert, CircularProgress, Box, Button, Fade } from '@mui/material';
+import { Grid, Alert, CircularProgress, Box, Button, Fade, Typography } from '@mui/material';
 import BlogCard from '@/components/blog/BlogCard';
 import SearchFilters from './SearchFilters';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { blogApi } from '@/lib/store/blogApi';
 import type { BlogPost } from '@/types/blog';
@@ -83,7 +84,7 @@ export default function BlogPosts({ initialPage = 1 }: BlogPostsProps) {
 
   if (isLoading && currentPage === 1) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 , margin: '0 auto'}}>
         <CircularProgress />
       </Box>
     );
@@ -91,8 +92,25 @@ export default function BlogPosts({ initialPage = 1 }: BlogPostsProps) {
 
   if (!data?.posts.length && allPosts.length === 0) {
     return (
-      <Box sx={{ textAlign: 'center', p: 4 }}>
-        No posts found.
+      <Box sx={{ textAlign: 'center', p: 4 , margin: '0 auto'}}>
+        <Typography variant="h6" color="text.secondary" gutterBottom>
+          No posts found
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<RefreshIcon />}
+          onClick={() => {
+            // Clear all filters
+            router.push(pathname, { scroll: false });
+            
+            // Reset local state
+            setCurrentPage(1);
+            setAllPosts([]);
+          }}
+          sx={{ mt: 2 }}
+        >
+          Clear Filters & Try Again
+        </Button>
       </Box>
     );
   }
