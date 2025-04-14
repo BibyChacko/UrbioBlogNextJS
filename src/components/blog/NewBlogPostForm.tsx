@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { Box, TextField, Button, Autocomplete, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material';
+import { Box, TextField, Button, Chip, Stack, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, Alert, Snackbar } from '@mui/material';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import RichTextEditor from './RichTextEditor';
-import { useRouter } from 'next/navigation';
+import { blogApi } from '@/lib/store/blogApi';
+import type { CreateBlogPostRequest } from '@/types/blog';
 
 const blogPostSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -23,20 +24,26 @@ interface NewBlogPostFormProps {
 
 export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps) {
   const [tags, setTags] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toast, setToast] = useState<{open: boolean; message: string; severity: 'success' | 'error'}>({
+  const [tagInput, setTagInput] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
     open: false,
     message: '',
     severity: 'success'
   });
-  const router = useRouter();
+
+  const [createPost, { isLoading }] = blogApi.useCreateBlogPostMutation();
 
   const {
     register,
     handleSubmit,
     control,
     formState: { errors },
-    reset,
+    reset
   } = useForm<BlogPostFormData>({
     resolver: zodResolver(blogPostSchema),
     defaultValues: {
@@ -46,9 +53,21 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
     },
   });
 
+  const handleAddTag = () => {
+    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
+      setTags([...tags, tagInput.trim()]);
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
   const handleClose = () => {
     reset();
     setTags([]);
+    setError('');
     onClose();
   };
 
@@ -57,42 +76,40 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
   };
 
   const onSubmit = async (data: BlogPostFormData) => {
-    setIsSubmitting(true);
     try {
-      const response = await fetch('/api/posts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...data,
-          tags,
-        }),
-      });
+      setError('');
 
-      if (!response.ok) {
-        throw new Error('Failed to create post');
-      }
+      const newPost: CreateBlogPostRequest = {
+        title: data.title.trim(),
+        content: data.content.trim(),
+        author: data.author.trim(),
+        tags,
+        imageUrl: 'https://dummyimage.com/640x480/', // Default image for now
+      };
 
-      const post = await response.json();
-      reset();
-      setTags([]);
+      await createPost(newPost).unwrap();
+      
+      // Show success toast
       setToast({
         open: true,
         message: 'Blog post created successfully!',
         severity: 'success'
       });
+      
+      // Reset form
+      reset();
+      setTags([]);
+      setError('');
       onClose();
-      router.refresh();
-    } catch (error) {
-      console.error('Error creating post:', error);
+    } catch (err) {
+      // Show error toast
       setToast({
         open: true,
         message: 'Failed to create blog post. Please try again.',
         severity: 'error'
       });
-    } finally {
-      setIsSubmitting(false);
+      setError('Failed to create post. Please try again.');
+      console.error('Error creating post:', err);
     }
   };
 
@@ -113,13 +130,20 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
         <DialogTitle>Create New Blog Post</DialogTitle>
         <form onSubmit={handleSubmit(onSubmit)}>
           <DialogContent>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Stack spacing={3}>
+              {error && (
+                <Alert severity="error">
+                  {error}
+                </Alert>
+              )}
+
               <TextField
                 label="Title"
                 {...register('title')}
                 error={!!errors.title}
                 helperText={errors.title?.message}
-                disabled={isSubmitting}
+                disabled={isLoading}
+                fullWidth
               />
 
               <TextField
@@ -127,7 +151,8 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
                 {...register('author')}
                 error={!!errors.author}
                 helperText={errors.author?.message}
-                disabled={isSubmitting}
+                disabled={isLoading}
+                fullWidth
               />
 
               <Controller
@@ -149,42 +174,66 @@ export default function NewBlogPostForm({ open, onClose }: NewBlogPostFormProps)
                 )}
               />
 
-              <Autocomplete
-                multiple
-                freeSolo
-                options={[]}
-                value={tags}
-                onChange={(_, newValue) => setTags(newValue)}
-                renderInput={(params) => (
+              <Box>
+                <Stack direction="row" spacing={1} alignItems="center">
                   <TextField
-                    {...params}
-                    label="Tags"
-                    placeholder="Add tags"
-                    disabled={isSubmitting}
+                    label="Add Tags"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
+                    fullWidth
+                    disabled={isLoading}
                   />
-                )}
-                sx={{ zIndex: 1301 }} // Higher than Dialog's z-index
-              />
-            </Box>
+                  <Button 
+                    onClick={handleAddTag} 
+                    variant="outlined"
+                    disabled={isLoading}
+                  >
+                    Add
+                  </Button>
+                </Stack>
+
+                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {tags.map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      onDelete={() => handleRemoveTag(tag)}
+                      disabled={isLoading}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </Stack>
           </DialogContent>
 
           <DialogActions>
-            <Button onClick={handleClose} disabled={isSubmitting}>
+            <Button onClick={handleClose} disabled={isLoading}>
               Cancel
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={isSubmitting}
+              disabled={isLoading}
             >
-              {isSubmitting ? <CircularProgress size={24} /> : 'Create Post'}
+              {isLoading ? (
+                <CircularProgress size={24} />
+              ) : (
+                'Create Post'
+              )}
             </Button>
           </DialogActions>
         </form>
       </Dialog>
-      <Snackbar 
-        open={toast.open} 
-        autoHideDuration={6000} 
+
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
         onClose={handleCloseToast}
         anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
       >

@@ -11,43 +11,52 @@ interface GetBlogPostsRequest {
 
 export const blogApi = createApi({
   reducerPath: 'blogApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ 
+    baseUrl: '/api',
+    prepareHeaders: (headers) => {
+      headers.set('Accept', 'application/json');
+      return headers;
+    }
+  }),
   tagTypes: ['BlogPosts', 'BlogPost'],
   endpoints: (builder) => ({
     getBlogPosts: builder.query<BlogPostsResponse, GetBlogPostsRequest>({
-      query: (params) => ({
-        url: '/posts',
-        params: {
-          page: params.page,
-          pageSize: params.pageSize,
-          search: params.search,
-          tag: params.tag,
-          author: params.author,
-        },
-      }),
+      query: (params) => {
+        const query = new URLSearchParams();
+        if (params.page) query.set('page', params.page.toString());
+        if (params.pageSize) query.set('pageSize', params.pageSize.toString());
+        if (params.search) query.set('search', params.search);
+        if (params.tag) query.set('tag', params.tag);
+        if (params.author) query.set('author', params.author);
+
+        return {
+          url: 'posts',
+          params: Object.fromEntries(query)
+        };
+      },
       providesTags: (result) =>
         result
           ? [
               ...result.posts.map(({ id }) => ({ type: 'BlogPosts' as const, id })),
-              { type: 'BlogPosts', id: 'LIST' },
+              { type: 'BlogPosts', id: 'LIST' }
             ]
-          : [{ type: 'BlogPosts', id: 'LIST' }],
+          : [{ type: 'BlogPosts', id: 'LIST' }]
     }),
     getBlogPost: builder.query<BlogPost, string>({
-      query: (id) => `/posts/${id}`,
+      query: (id) => `posts/${id}`,
       providesTags: (result, error, id) => [{ type: 'BlogPost', id }],
     }),
     createBlogPost: builder.mutation<BlogPost, CreateBlogPostRequest>({
-      query: (post) => ({
-        url: '/posts',
+      query: (body) => ({
+        url: 'posts',
         method: 'POST',
-        body: post,
+        body,
       }),
-      invalidatesTags: [{ type: 'BlogPosts', id: 'LIST' }],
+      invalidatesTags: [{ type: 'BlogPosts', id: 'LIST' }]
     }),
     updateBlogPost: builder.mutation<BlogPost, Partial<BlogPost>>({
       query: ({ id, ...patch }) => ({
-        url: `/posts/${id}`,
+        url: `posts/${id}`,
         method: 'PATCH',
         body: patch,
       }),
@@ -55,7 +64,7 @@ export const blogApi = createApi({
     }),
     deleteBlogPost: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/posts/${id}`,
+        url: `posts/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['BlogPosts'],

@@ -1,6 +1,7 @@
 import { BlogPost, BlogPostsResponse } from '@/types/blog';
 
-export const posts: BlogPost[] = [
+// Initial posts data
+const initialPosts: BlogPost[] = [
   {
     id: '1',
     title: 'Getting Started with LED Lighting',
@@ -24,8 +25,8 @@ export const posts: BlogPost[] = [
   {
     id: '3',
     title: 'Commercial LED Applications',
-    content: '<h2>LED in Business Environments</h2><p>Explore how commercial spaces can benefit from LED lighting solutions. From retail to offices, learn about the best practices for implementation.</p>',
-    author: 'Michael Chen',
+    content: '<h2>LED Solutions for Business</h2><p>Discover how commercial spaces can benefit from LED technology. From office buildings to retail stores, learn about the best practices for implementation.</p>',
+    author: 'Mike Johnson',
     createdAt: '2025-04-03T09:15:00Z',
     updatedAt: '2025-04-03T09:15:00Z',
     imageUrl: 'https://dummyimage.com/640x480/',
@@ -302,6 +303,51 @@ export const posts: BlogPost[] = [
     tags: ['Innovation', 'Future', 'LED'],
   },
 ];
+
+// Create a singleton store
+class PostStore {
+  private static instance: PostStore;
+  private posts: BlogPost[] = [...initialPosts];
+
+  private constructor() {}
+
+  static getInstance(): PostStore {
+    if (!PostStore.instance) {
+      PostStore.instance = new PostStore();
+    }
+    return PostStore.instance;
+  }
+
+  getPosts(): BlogPost[] {
+    return this.posts;
+  }
+
+  getPost(id: string): BlogPost | undefined {
+    return this.posts.find(post => post.id === id);
+  }
+
+  addPost(post: BlogPost): void {
+    this.posts.unshift(post);
+  }
+
+  updatePost(id: string, updatedPost: Partial<BlogPost>): void {
+    const index = this.posts.findIndex(post => post.id === id);
+    if (index !== -1) {
+      this.posts[index] = { ...this.posts[index], ...updatedPost };
+    }
+  }
+
+  deletePost(id: string): void {
+    this.posts = this.posts.filter(post => post.id !== id);
+  }
+}
+
+// Export singleton instance methods
+export const posts = PostStore.getInstance().getPosts();
+export const getPost = (id: string) => PostStore.getInstance().getPost(id);
+export const addPost = (post: BlogPost) => PostStore.getInstance().addPost(post);
+export const updatePost = (id: string, post: Partial<BlogPost>) => PostStore.getInstance().updatePost(id, post);
+export const deletePost = (id: string) => PostStore.getInstance().deletePost(id);
 
 interface FilterOptions {
   search?: string;

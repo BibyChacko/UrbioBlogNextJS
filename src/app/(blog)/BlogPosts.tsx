@@ -1,30 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Grid, Alert, CircularProgress, Box, Button, Fade } from '@mui/material';
 import BlogCard from '@/components/blog/BlogCard';
 import SearchFilters from './SearchFilters';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { blogApi } from '@/lib/store/blogApi';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import { BlogPost } from '@/types/blog';
+import { blogApi } from '@/lib/store/blogApi';
+import type { BlogPost } from '@/types/blog';
 
 interface BlogPostsProps {
-  initialData: {
-    posts: BlogPost[];
-    total: number;
-    hasMore: boolean;
-  };
+  initialPage: number;
 }
 
-export default function BlogPosts({ initialData }: BlogPostsProps) {
+export default function BlogPosts({ initialPage }: BlogPostsProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [posts, setPosts] = useState<BlogPost[]>(initialData.posts);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
-  const lastPostRef = useRef<HTMLDivElement>(null);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [allPosts, setAllPosts] = useState<BlogPost[]>([]);
   const pageSize = 10;
 
   // Create URLSearchParams object for better params handling
@@ -33,50 +27,37 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
   const tag = currentParams.get('tag') || undefined;
   const author = currentParams.get('author') || undefined;
 
-  const {
-    data: blogData,
-    isLoading,
-    isFetching,
-    error,
-  } = blogApi.useGetBlogPostsQuery({
-    page,
+  const { data, isLoading, isFetching, error } = blogApi.useGetBlogPostsQuery({
+    page: currentPage,
     pageSize,
     search,
     tag,
-    author,
-  }, {
-    skip: page === 1, // Skip the query for first page as we have SSR data
-    refetchOnMountOrArgChange: false,
-    refetchOnReconnect: false,
-    refetchOnFocus: false
+    author
   });
 
-  // Reset page when search params change
+  // Update accumulated posts when data changes
   useEffect(() => {
-    setPage(1);
-    setPosts(initialData.posts);
-  }, [search, tag, author, initialData.posts]);
-
-  // Update posts when data changes
-  useEffect(() => {
-    if (blogData?.posts && page > 1) {
-      setPosts(prevPosts => [...prevPosts, ...blogData.posts]);
-
-      // Scroll to the last post of the previous page
-      if (lastPostRef.current) {
-        const yOffset = -80;
-        const element = lastPostRef.current;
-        const y = element.getBoundingClientRect().top + window.scrollY + yOffset;
-        window.scrollTo({ top: y, behavior: 'smooth' });
+    if (data?.posts) {
+      if (currentPage === 1) {
+        // Reset posts if it's the first page
+        setAllPosts(data.posts);
+      } else {
+        // Append new posts to existing ones, avoiding duplicates
+        setAllPosts(prevPosts => {
+          const newPosts = data.posts.filter(
+            newPost => !prevPosts.some(existingPost => existingPost.id === newPost.id)
+          );
+          return [...prevPosts, ...newPosts];
+        });
       }
     }
-  }, [blogData, page]);
+  }, [data?.posts, currentPage]);
 
   const handleLoadMore = useCallback(() => {
-    if (!isFetching && (page === 1 ? initialData.hasMore : blogData?.hasMore)) {
-      setPage(prev => prev + 1);
+    if (!isFetching && data?.hasMore) {
+      setCurrentPage(prev => prev + 1);
     }
-  }, [isFetching, blogData?.hasMore, initialData.hasMore, page]);
+  }, [isFetching, data?.hasMore]);
 
   const handleSearch = useCallback((params: { search?: string; tag?: string; author?: string }) => {
     const newParams = new URLSearchParams(currentParams);
@@ -89,11 +70,12 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
         newParams.delete(key);
       }
     });
-
-    // Reset page param
-    newParams.delete('page');
     
-    // Update URL without reload
+    // Reset page and accumulated posts when search params change
+    setCurrentPage(1);
+    setAllPosts([]);
+    
+    // Update URL without reload, but don't include page
     router.push(`${pathname}?${newParams.toString()}`, { scroll: false });
   }, [pathname, router, currentParams]);
 
@@ -101,12 +83,16 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  if (!data && allPosts.length === 0) {
+    return null;
+  }
+
   const uniqueTags = Array.from(
-    new Set(posts.flatMap(post => post.tags || []))
+    new Set(allPosts.map((post: BlogPost) => post.tags || []).flat())
   ).sort();
 
   const uniqueAuthors = Array.from(
-    new Set(posts.map(post => post.author))
+    new Set(allPosts.map((post: BlogPost) => post.author))
   ).sort();
 
   return (
@@ -129,14 +115,13 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
 
       <Grid item xs={12}>
         <Grid container spacing={3}>
-          {posts.map((post, index) => (
+          {allPosts.map((post: BlogPost, index: number) => (
             <Grid
               item
               xs={12}
               sm={6}
               md={4}
               key={`${post.id}-${index}`}
-              ref={index === posts.length - pageSize ? lastPostRef : undefined}
             >
               <BlogCard post={post} />
             </Grid>
@@ -150,13 +135,13 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
         </Grid>
       )}
 
-      <Grid item xs={12} ref={loadMoreRef} sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+      <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
         {!isLoading && !isFetching && (
-          (page === 1 ? initialData.hasMore : blogData?.hasMore) ? (
+          data?.hasMore ? (
             <Button variant="outlined" onClick={handleLoadMore}>
               Load More
             </Button>
-          ) : posts.length > pageSize && (
+          ) : allPosts.length > pageSize && (
             <Button
               variant="outlined"
               onClick={scrollToTop}
@@ -168,7 +153,7 @@ export default function BlogPosts({ initialData }: BlogPostsProps) {
         )}
       </Grid>
 
-      <Fade in={posts.length > pageSize && window.scrollY > 500}>
+      <Fade in={allPosts.length > pageSize && window.scrollY > 500}>
         <Box
           onClick={scrollToTop}
           role="presentation"

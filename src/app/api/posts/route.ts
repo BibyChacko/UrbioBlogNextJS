@@ -1,37 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { filterPosts } from '@/lib/db/posts';
-import { posts } from '@/lib/db/posts';
+import { posts, addPost } from '@/lib/db/posts';
+import { filterPosts } from '@/lib/utils/filterPosts';
 import { BlogPost } from '@/types/blog';
 
 // Enable edge runtime for better performance
 export const runtime = 'edge';
 
-// Add cache configuration
-export const revalidate = 3600; // Revalidate every hour
-
-// Add artificial delay for development
-const DELAY = 1000; // milliseconds
+const DELAY = process.env.NODE_ENV === 'development' ? 1000 : 0;
 
 export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '6');
-  const search = searchParams.get('search') || undefined;
-  const tag = searchParams.get('tag') || undefined;
-  const author = searchParams.get('author') || undefined;
-  
   try {
-    await new Promise(resolve => setTimeout(resolve, DELAY));
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const pageSize = parseInt(searchParams.get('pageSize') || '10');
+    const search = searchParams.get('search') || undefined;
+    const tag = searchParams.get('tag') || undefined;
+    const author = searchParams.get('author') || undefined;
+    
+    // Add artificial delay in development
+    if (DELAY) {
+      await new Promise(resolve => setTimeout(resolve, DELAY));
+    }
+
     const result = filterPosts({ search, tag, author, page, pageSize });
     
     // Set cache headers
-    const headers = new Headers();
-    headers.set('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-    return NextResponse.json(result, {
-      headers,
+    const headers = new Headers({
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store'
+    });
+
+    return new NextResponse(JSON.stringify(result), {
       status: 200,
+      headers
     });
   } catch (error) {
+    console.error('Error in GET /api/posts:', error);
     return NextResponse.json(
       { error: 'Failed to fetch posts' },
       { status: 500 }
@@ -46,29 +50,35 @@ export async function POST(request: NextRequest) {
     // Validate required fields
     if (!body.title || !body.content || !body.author) {
       return NextResponse.json(
-        { error: 'Title, content and author are required' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    // Get highest ID and increment
+    const highestId = Math.max(...posts.map(post => parseInt(post.id)), 0);
+    
+    // Create timestamp for both created and updated
+    const now = new Date().toISOString();
+    
     // Create new post
     const newPost: BlogPost = {
-      id: (posts.length + 1).toString(),
+      id: (highestId + 1).toString(),
       title: body.title,
       content: body.content,
       author: body.author,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      imageUrl: body.imageUrl || 'https://dummyimage.com/640x480/',
       tags: body.tags || [],
+      imageUrl: body.imageUrl || 'https://dummyimage.com/640x480/',
+      createdAt: now,
+      updatedAt: now,
     };
 
-    // Add to posts array
-    posts.unshift(newPost);
+    // Add to posts using singleton store method
+    addPost(newPost);
 
-    await new Promise(resolve => setTimeout(resolve, DELAY));
-    return NextResponse.json(newPost);
+    return NextResponse.json(newPost, { status: 201 });
   } catch (error) {
+    console.error('Error in POST /api/posts:', error);
     return NextResponse.json(
       { error: 'Failed to create post' },
       { status: 500 }

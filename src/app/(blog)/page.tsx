@@ -1,48 +1,10 @@
 import { Suspense } from 'react';
-import { Container, Grid, Typography, CircularProgress } from '@mui/material';
-import { posts } from '@/lib/db/posts';
+import { Container, Grid, Typography, CircularProgress, Box } from '@mui/material';
 import BlogPosts from './BlogPosts';
-
-// Server Component
-async function getInitialPosts(searchParams: URLSearchParams) {
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '10');
-  const search = searchParams.get('search') || '';
-  const tag = searchParams.get('tag') || '';
-  const author = searchParams.get('author') || '';
-
-  let filteredPosts = [...posts];
-
-  if (search) {
-    const searchLower = search.toLowerCase();
-    filteredPosts = filteredPosts.filter(
-      (post) =>
-        post.title.toLowerCase().includes(searchLower) ||
-        post.content.toLowerCase().includes(searchLower)
-    );
-  }
-
-  if (tag) {
-    filteredPosts = filteredPosts.filter((post) => post.tags?.includes(tag));
-  }
-
-  if (author) {
-    filteredPosts = filteredPosts.filter((post) => post.author === author);
-  }
-
-  // Sort posts by date in descending order
-  filteredPosts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const paginatedPosts = filteredPosts.slice(start, end);
-
-  return {
-    posts: paginatedPosts,
-    total: filteredPosts.length,
-    hasMore: end < filteredPosts.length,
-  };
-}
+import { blogApi } from '@/lib/store/blogApi';
+import { store } from '@/lib/store/store';
+import { filterPosts } from '@/lib/utils/filterPosts';
+import TotalPostsCount from '@/components/blog/TotalPostsCount';
 
 // Server Component
 export default async function BlogPage({ 
@@ -50,30 +12,47 @@ export default async function BlogPage({
 }: { 
   searchParams: { [key: string]: string | string[] | undefined } 
 }) {
-  const params = new URLSearchParams();
-  
   // Wait for searchParams to be ready
   const resolvedParams = await Promise.resolve(searchParams);
-  
-  params.set('page', (resolvedParams.page as string) || '1');
-  params.set('pageSize', (resolvedParams.pageSize as string) || '10');
-  if (resolvedParams.search) params.set('search', resolvedParams.search as string);
-  if (resolvedParams.tag) params.set('tag', resolvedParams.tag as string);
-  if (resolvedParams.author) params.set('author', resolvedParams.author as string);
 
-  const initialData = await getInitialPosts(params);
+  // Handle params safely - don't include page in initial load
+  const pageSize = typeof resolvedParams.pageSize === 'string' ? parseInt(resolvedParams.pageSize) : 10;
+  const search = typeof resolvedParams.search === 'string' ? resolvedParams.search : '';
+  const tag = typeof resolvedParams.tag === 'string' ? resolvedParams.tag : '';
+  const author = typeof resolvedParams.author === 'string' ? resolvedParams.author : '';
+
+  // Get initial posts for SSR
+  const { total: initialTotal } = filterPosts({ search, tag, author });
+
+  try {
+    // Prefetch initial data on server
+    await store.dispatch(
+      blogApi.util.prefetch('getBlogPosts', { page: 1, pageSize, search, tag, author }, { force: true })
+    );
+  } catch (error) {
+    console.error('Error prefetching data:', error);
+  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Grid container spacing={4}>
         <Grid item xs={12}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Blog Posts
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="h4" component="h1" gutterBottom>
+              Blog Posts
+            </Typography>
+            <Suspense fallback={
+              <Typography variant="subtitle1" color="text.secondary">
+                Total Posts: {initialTotal}
+              </Typography>
+            }>
+              <TotalPostsCount />
+            </Suspense>
+          </Box>
         </Grid>
 
         <Suspense fallback={<CircularProgress />}>
-          <BlogPosts initialData={initialData} />
+          <BlogPosts initialPage={1} />
         </Suspense>
       </Grid>
     </Container>

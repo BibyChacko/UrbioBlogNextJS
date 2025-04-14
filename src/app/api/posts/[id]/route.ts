@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { posts } from '@/lib/db/posts';
+import { getPost } from '@/lib/db/posts';
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +11,7 @@ export async function GET(
   }
 
   const id = await Promise.resolve(params.id);
-  const post = posts.find((p) => p.id === id);
+  const post = getPost(id);
 
   if (!post) {
     return NextResponse.json(
