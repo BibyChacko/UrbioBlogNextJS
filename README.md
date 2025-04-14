@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Urbio Blog
+
+A basic blog listing, with infinite scroll and tag-based filtering and also option to add new blog posts.
+
+## Features
+
+- Server-side rendered blog posts
+- Client-side pagination with infinite scroll
+- Rich text editor for creating posts
+- Mobile-responsive design
+- Tag-based filtering and search
+- Material-UI components
 
 ## Getting Started
 
-First, run the development server:
+1. Clone the repository:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+2. Install dependencies:
+    npm i --legacy-peer-deps
+
+3. Run the development server:
+    npm run dev
+
+4. Open [http://localhost:3000](http://localhost:3000)
+
+## Project Structure
+
+```
+urbio/
+├── src/
+│   ├── app/             # Next.js app router pages
+│   │   ├── (blog)/      # Blog routes with layout
+│   │   └── api/         # API routes
+│   ├── components/      # Reusable React components
+│   │   ├── blog/        # Blog-specific components
+│   │   └── common/      # Shared components
+│   ├── hooks/           # Custom React hooks
+│   ├── lib/            # Core utilities
+│   │   ├── db/         # Data layer (singleton store)
+│   │   ├── store/      # State management (GetIt + Riverpod)
+│   │   └── utils/      # Helper functions
+│   └── types/          # TypeScript type definitions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Initial Load (SSR)**:
+   - Server component fetches initial data using singleton store
+   - Data is pre-rendered in HTML
+   - Client hydrates with RTK Query for subsequent requests
 
-## Learn More
+2. **Client-side Pagination**:
+   - Managed by BlogPosts component
+   - Uses URL-based state for filters
+   - Infinite scroll with optimistic updates
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Key Implementation Details
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Singleton Store**:
+   ```typescript
+   // src/lib/db/posts.ts
+   class PostStore {
+     private static instance: PostStore;
+     private posts: BlogPost[] = [];
 
-## Deploy on Vercel
+     static getInstance() {
+       if (!PostStore.instance) {
+         PostStore.instance = new PostStore();
+       }
+       return PostStore.instance;
+     }
+   }
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+2. **Server-Side Rendering**:
+   ```typescript
+   // src/app/(blog)/page.tsx
+   export default async function BlogPage({ searchParams }) {
+     // Pre-fetch initial data
+     await store.dispatch(
+       blogApi.util.prefetch('getBlogPosts', { page: 1 })
+     );
+     return <BlogPosts initialPage={1} />;
+   }
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. **Client-Side Pagination**:
+   ```typescript
+   // src/hooks/useBlogPosts.ts
+   const { data, hasMore } = useBlogPostsQuery({
+     page,
+     pageSize: 10,
+     ...filters
+   });
+
+
+## Challenges
+Well, i was more fond of React Query not a big fan of RTK Query. For adding new blog posts, i was intially using quill, but it doesnt worked , anyhow tiptap is decent.
