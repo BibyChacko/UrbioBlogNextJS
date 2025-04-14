@@ -14,12 +14,12 @@ export function useBlogPosts(initialQuery: BlogPostsQuery) {
       try {
         setIsLoading(true);
         const searchParams = new URLSearchParams({
-          page: query.page.toString(),
-          pageSize: query.pageSize.toString(),
+          page: query?.page?.toString() ?? '1',
+          pageSize: query?.pageSize?.toString() ?? '10',
         });
         
-        if (query.tag) searchParams.append('tag', query.tag);
-        if (query.search) searchParams.append('search', query.search);
+        if (query?.tag) searchParams.append('tag', query.tag);
+        if (query?.search) searchParams.append('search', query.search);
 
         const response = await fetch(`/api/posts?${searchParams.toString()}`);
         if (!response.ok) throw new Error('Failed to fetch posts');
@@ -40,7 +40,7 @@ export function useBlogPosts(initialQuery: BlogPostsQuery) {
     if (data?.hasMore) {
       setQuery(prev => ({
         ...prev,
-        page: prev.page + 1,
+        page: (prev?.page ?? 1) + 1,
       }));
     }
   };

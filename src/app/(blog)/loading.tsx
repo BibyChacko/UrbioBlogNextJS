@@ -1,4 +1,4 @@
-import { Container, Grid, CircularProgress, Box } from '@mui/material';
+import { Container, CircularProgress, Box } from '@mui/material';
 
 export default function Loading() {
   return (

@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getPost } from '@/lib/db/posts';
 
+// Define route segment config
+export const dynamic = 'force-dynamic';
+
+// Route handler
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  _request: Request,
+  context: any
 ) {
-  // Add artificial delay in development
+  // Simulate network delay in development
   if (process.env.NODE_ENV === 'development') {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  const id = await Promise.resolve(params.id);
-  const post = getPost(id);
+  const post = getPost(context.params.id);
 
   if (!post) {
     return NextResponse.json(

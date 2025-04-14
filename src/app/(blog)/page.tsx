@@ -6,14 +6,18 @@ import { store } from '@/lib/store/store';
 import { filterPosts } from '@/lib/utils/filterPosts';
 import TotalPostsCount from '@/components/blog/TotalPostsCount';
 
+interface SearchParams {
+  [key: string]: string | string[] | undefined;
+}
+
+interface PageProps {
+  searchParams: Promise<SearchParams>;
+}
+
 // Server Component
-export default async function BlogPage({ 
-  searchParams 
-}: { 
-  searchParams: { [key: string]: string | string[] | undefined } 
-}) {
+export default async function BlogPage({ searchParams }: PageProps) {
   // Wait for searchParams to be ready
-  const resolvedParams = await Promise.resolve(searchParams);
+  const resolvedParams = await searchParams;
 
   // Handle params safely - don't include page in initial load
   const pageSize = typeof resolvedParams.pageSize === 'string' ? parseInt(resolvedParams.pageSize) : 10;

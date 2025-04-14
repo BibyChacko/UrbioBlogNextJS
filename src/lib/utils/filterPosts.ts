@@ -1,4 +1,4 @@
-import { BlogPost } from '@/types/blog';
+
 import { posts } from '@/lib/db/posts';
 
 interface FilterPostsParams {

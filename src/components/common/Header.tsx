@@ -1,11 +1,8 @@
-'use client';
+
 
 import { AppBar, Toolbar, Typography, Container, Box } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
 
 export default function Header() {
-  const theme = useTheme();
-
   return (
     <AppBar position="static" color="primary">
       <Container maxWidth="lg">
