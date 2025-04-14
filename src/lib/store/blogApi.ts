@@ -9,10 +9,19 @@ interface GetBlogPostsRequest {
   author?: string;
 }
 
+const getBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    // Server-side: use localhost
+    return 'http://localhost:3001';
+  }
+  // Client-side: use relative URL
+  return '';
+};
+
 export const blogApi = createApi({
   reducerPath: 'blogApi',
   baseQuery: fetchBaseQuery({ 
-    baseUrl: '/api',
+    baseUrl: `${getBaseUrl()}/api`,
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
       return headers;
